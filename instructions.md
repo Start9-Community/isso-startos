@@ -14,12 +14,16 @@
 
 ## First start
 
-After install, StartOS shows two setup tasks — complete both:
+After install, StartOS shows a single setup task: run **Set Admin Password** to
+generate the password for the Moderation Panel. The panel is always
+password-protected, so the service stays stopped until you do this. Isso then
+starts right away — it ships with a `localhost` placeholder origin, so you don't
+have to add a website first just to get it running.
 
-1. Run **Configure → Websites** and add the origin(s) of the site(s) that will
-   show comments, including the scheme — e.g. `https://blog.example.com/`. At
-   least one is required; Isso won't start without it (its CORS protection).
-2. Run **Set Admin Password** to generate the password for the Moderation Panel.
+To actually show comments on your own pages, run **Configure → Websites** and add
+the origin(s) of the site(s) that will embed them, including the scheme — e.g.
+`https://blog.example.com/`. (You'll never see the `localhost` placeholder; it's
+kept automatically so Isso's CORS allowlist is never empty.)
 
 ## Make the Isso Server reachable by your visitors
 

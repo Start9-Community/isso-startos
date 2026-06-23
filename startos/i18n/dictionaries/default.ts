@@ -14,7 +14,7 @@ const dict = {
 
   // actions/configure/websites.ts
   Websites: 7,
-  "The website origin(s) allowed to embed and load comments (Isso's CORS allowlist). At least one is required for comments to work.": 8,
+  "The website origin(s) allowed to embed and load comments (Isso's CORS allowlist). Add the origin of each site where your comments will appear.": 8,
   'Enter a full origin including the scheme, e.g. https://blog.example.com/': 9,
   'Choose which website(s) may embed your Isso comments': 10,
 
@@ -65,7 +65,6 @@ const dict = {
   'Get the HTML snippet to add comments to your website': 48,
 
   // init/watchSetup.ts
-  'Set the website(s) that will embed Isso comments': 49,
   'Create the admin password for the moderation panel': 50,
 } as const
 

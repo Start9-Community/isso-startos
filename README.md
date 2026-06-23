@@ -72,17 +72,22 @@ The package uses a single volume, `main`, with these subpaths:
 
 ## Installation and First-Run Flow
 
-The daemon does not start until two **critical tasks** are completed (StartOS
-surfaces them in place of the normal controls):
+The daemon does not start until one **critical task** is completed (StartOS
+surfaces it in place of the normal controls):
 
-1. **Websites** (under **Configure**) — add the origin(s) that will embed
-   comments. This is Isso's CORS allowlist, and Isso requires at least one.
-2. **Set Admin Password** — generate the password for the `/admin` moderation
-   panel. The password is created here, **not** at install; re-run it any time to
-   rotate it.
+- **Set Admin Password** — generate the password for the `/admin` moderation
+  panel. The panel is always authenticated, so the service stays stopped until a
+  password exists. The password is created here, **not** at install; re-run it any
+  time to rotate it.
 
-Once both are done, Isso starts and reads `isso.cfg` directly. Startup is fast;
-there is no large first-boot download.
+Websites are **not** a blocker: the config ships with a seeded `localhost`
+placeholder origin, so Isso's CORS allowlist is never empty and the server starts
+as soon as the password is set — letting you explore before adding any real site.
+Add the origins that will actually embed comments under **Configure → Websites**
+whenever you're ready.
+
+Once the password is set, Isso starts and reads `isso.cfg` directly. Startup is
+fast; there is no large first-boot download.
 
 ---
 
@@ -91,18 +96,26 @@ there is no large first-boot download.
 `isso.cfg` is the source of truth, modeled directly as a typed File Model
 (`startos/fileModels/issoCfg.ts`). The service actions read and write it, and
 because it is a real File Model, settings you change by hand over SSH are honored
-too. Manage settings through the **Configure** group — **Websites** for the
-embedding origins, **Server** for moderation / edit window / spam protection, and
-**Email Notifications** for SMTP — plus the standalone **Set Admin Password**.
+too — including Isso options this package doesn't expose. The model regenerates
+the file on every write, but it carries through any keys or whole sections it
+doesn't manage (e.g. `[hash]`, `[markup]`, `[rss]`), so hand-set extras survive;
+only the values the actions own are overwritten, and enforced keys (`dbpath`,
+`[admin] enabled`) always win. Manage the common settings through the
+**Configure** group — **Websites** for the embedding origins, **Server** for
+moderation / edit window / spam protection, and **Email Notifications** for SMTP —
+plus the standalone **Set Admin Password**.
 
 The only value kept outside `isso.cfg` is the SDK SMTP *selection* (`system` /
 `custom` / `disabled`) in `store.json`, so the Email Notifications form can
 prefill it; that action resolves the selection and writes the concrete `[smtp]`
 keys into `isso.cfg`.
 
-Isso's `host` value (its CORS allowlist) is exactly the **Websites** you set.
-Enter each as a full `https://` origin — embed pages are served over HTTPS, so an
-`http://` entry would be mixed-content-blocked.
+Isso's `host` value (its CORS allowlist) is the **Websites** you set, plus a
+hidden `localhost` placeholder that is always kept so the allowlist is never empty
+(Isso won't start otherwise). The Websites action hides that entry and re-appends
+it on save, so you only ever see and manage your real origins. Enter each as a
+full `https://` origin — embed pages are served over HTTPS, so an `http://` entry
+would be mixed-content-blocked.
 
 ---
 
@@ -128,7 +141,7 @@ so browsers don't block mixed content.
 
 | Action ID | Group | Purpose | Availability |
 | --- | --- | --- | --- |
-| `set-websites` (Websites) | Configure | Set the origin(s) allowed to embed comments — Isso's CORS allowlist; ≥1 required | any |
+| `set-websites` (Websites) | Configure | Set the origin(s) allowed to embed comments — Isso's CORS allowlist (a hidden `localhost` placeholder is always kept) | any |
 | `configure-server` (Server) | Configure | Moderation, edit window, spam protection, and display options | any |
 | `configure-smtp` (Email Notifications) | Configure | Email notifications over SMTP (the server's system SMTP or a custom server) + recipient | any |
 | `set-admin-password` | — | Generate (or rotate) the `/admin` password and return it (log in via the `admin` interface) | any |
@@ -183,9 +196,11 @@ None.
 
 ## Limitations and Differences
 
-1. **Websites must be set** — Isso requires at least one whitelisted website
-   origin (via **Configure → Websites**) and will not start without one; this is
-   upstream CORS behavior.
+1. **A localhost placeholder is always whitelisted** — Isso won't start with an
+   empty `host` (upstream CORS behavior), so the package seeds, and always
+   re-appends, a `localhost` origin. Isso therefore starts with no user-configured
+   website; add your real origins under **Configure → Websites** for comments to
+   load on your pages.
 2. **Public embedding needs a publicly-trusted certificate** — visitors load
    comments cross-origin from the `comments` interface, so for a public site it
    must be reached via a **Let's Encrypt domain**. A bare IP, `.onion`, or
@@ -198,7 +213,9 @@ None.
 4. **Mixed content** — embed pages served over HTTPS must use the HTTPS Isso
    address; mixing HTTP and HTTPS will be blocked by the browser.
 5. **Settings are file-backed** — manage them through the Configure actions;
-   `isso.cfg` is a typed File Model, so hand edits over SSH are honored too.
+   `isso.cfg` is a typed File Model, so hand edits over SSH are honored too,
+   including Isso options the actions don't expose (preserved across rewrites —
+   see [Configuration Management](#configuration-management)).
 
 ---
 
@@ -261,14 +278,15 @@ cors_hosts: the configured Websites (Isso [general] host)
 dependencies: none
 health: GET /info == 200
 actions:
-  - set-websites        # Configure > Websites; CORS allowlist (>= 1 origin)
+  - set-websites        # Configure > Websites; CORS allowlist (your origins; a hidden localhost placeholder is always kept)
   - configure-server    # Configure > Server; moderation, edit window, guard
   - configure-smtp      # Configure > Email Notifications; SMTP + recipient
   - set-admin-password  # generate / rotate the /admin password
   - embed-code          # pick an address; returns the embed snippet
 notes:
-  - comments do not load until at least one Website origin is whitelisted
-  - admin panel is enabled only once a password is set; gated by that password
+  - a localhost placeholder is always whitelisted, so Isso starts without user input; real comments load on a page only once that page's origin is added under Websites
+  - admin panel is always enabled; the Set Admin Password critical task keeps the service stopped until a password is set, so /admin is never unauthenticated
   - the admin interface shares the comments port — discoverability, not network isolation
+  - isso.cfg is regenerated on write but preserves hand-set options/sections it doesn't model (e.g. [hash], [markup], [rss]); enforced keys (dbpath, [admin] enabled) always win
   - production image serves no demo page
 ```

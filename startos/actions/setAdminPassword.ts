@@ -4,11 +4,12 @@ import { i18n } from '../i18n'
 import { issoCfg } from '../fileModels/issoCfg'
 import { randomPassword } from '../utils'
 
-// Generates and stores the /admin moderation password (in isso.cfg [admin],
-// enabling the panel). Surfaced as a critical task at install when no password
-// is set; re-running it rotates the password. The merge restarts Isso (main
-// holds a `.const` read of isso.cfg). The login URL is the Moderation Panel
-// interface, so this only returns the credential.
+// Generates and stores the /admin moderation password (isso.cfg [admin]
+// password). The panel is always enabled, so this password is what authenticates
+// it. Surfaced as a critical task at install when no password is set — the
+// service stays stopped until one is — and re-running it rotates the password.
+// The merge restarts Isso (main holds a `.const` read of isso.cfg). Login is via
+// the Moderation Panel interface, so this only returns the credential.
 export const setAdminPassword = sdk.Action.withoutInput(
   'set-admin-password',
 
@@ -25,9 +26,7 @@ export const setAdminPassword = sdk.Action.withoutInput(
 
   async ({ effects }) => {
     const adminPassword = utils.getDefaultString(randomPassword)
-    await issoCfg.merge(effects, {
-      admin: { enabled: true, password: adminPassword },
-    })
+    await issoCfg.merge(effects, { admin: { password: adminPassword } })
 
     return {
       version: '1' as const,

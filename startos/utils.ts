@@ -11,6 +11,12 @@ export const issoCfgPath = `${configDir}/isso.cfg`
 export const dbSubpath = 'db'
 export const configSubpath = 'config'
 
+// Isso refuses to start with an empty CORS allowlist (its [general] host), so we
+// seed this placeholder origin at install and the Websites action always keeps it
+// appended (and hidden from the form). Lets the service boot before the user has
+// whitelisted any real website.
+export const defaultHost = 'localhost'
+
 export const randomPassword = {
   charset: 'a-z,A-Z,0-9',
   len: 24,

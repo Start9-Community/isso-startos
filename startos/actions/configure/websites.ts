@@ -1,6 +1,7 @@
 import { issoCfg } from '../../fileModels/issoCfg'
 import { i18n } from '../../i18n'
 import { sdk } from '../../sdk'
+import { defaultHost } from '../../utils'
 
 const { InputSpec, Value, List } = sdk
 
@@ -10,11 +11,9 @@ const inputSpec = InputSpec.of({
       {
         name: i18n('Websites'),
         description: i18n(
-          "The website origin(s) allowed to embed and load comments (Isso's CORS allowlist). At least one is required for comments to work.",
+          "The website origin(s) allowed to embed and load comments (Isso's CORS allowlist). Add the origin of each site where your comments will appear.",
         ),
         default: [],
-        // Enforce at least one origin — Isso loads no comments without one.
-        minLength: 1,
       },
       {
         placeholder: 'https://blog.example.com/',
@@ -45,19 +44,19 @@ export const setWebsites = sdk.Action.withInput(
 
   inputSpec,
 
-  // Prefill with the current allowlist (Isso's [general] host).
+  // Prefill with the current allowlist, minus the localhost placeholder — it's
+  // kept internally (re-appended on save), not something the user manages.
   async ({ effects }) => {
     const host = await issoCfg.read((c) => c.general.host).once()
-    return host?.length ? { websites: host } : {}
+    const websites = (host ?? []).filter((h) => h !== defaultHost)
+    return websites.length ? { websites } : {}
   },
 
   async ({ effects, input }) => {
-    // `minLength` guards the UI form; enforce it here too so the rule holds for
-    // any caller, and drop blank entries.
-    const host = input.websites.map((w) => w.trim()).filter(Boolean)
-    if (host.length === 0) {
-      throw new Error('Enter at least one website origin.')
-    }
+    // Drop blanks, then always keep the localhost placeholder so Isso never has
+    // an empty CORS allowlist (which would stop it from starting).
+    const websites = input.websites.map((w) => w.trim()).filter(Boolean)
+    const host = [...new Set([...websites, defaultHost])]
     await issoCfg.merge(effects, { general: { host } })
   },
 )
