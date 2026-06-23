@@ -1,6 +1,5 @@
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { storeJson } from './fileModels/store.json'
 import { issoCfg } from './fileModels/issoCfg'
 import {
   configDir,
@@ -8,25 +7,17 @@ import {
   dbDir,
   dbSubpath,
   issoCfgPath,
-  ownUiUrls,
-  parseWebsites,
-  renderIssoCfg,
   uiPort,
 } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
-  console.info('Starting Isso!')
+  console.info(i18n('Starting Isso!'))
 
-  const store = await storeJson.read().const(effects)
-  if (!store) throw new Error('no store.json')
-
-  // Isso's CORS allowlist: the user's website(s) plus this server's own Tor/LAN
-  // addresses (so the /admin panel, served by Isso itself, is allowed too).
-  const hosts = [
-    ...parseWebsites(store.websites),
-    ...(await ownUiUrls(effects)),
-  ]
-  await issoCfg.write(effects, renderIssoCfg(store, hosts))
+  // isso.cfg is seeded by seedFiles at init and read by the daemon via
+  // ISSO_SETTINGS. Restart whenever it changes (the actions write it; the user
+  // may edit it directly over SSH).
+  const cfg = await issoCfg.read().const(effects)
+  if (!cfg) throw new Error('isso.cfg has not been seeded')
 
   const sub = await sdk.SubContainer.of(
     effects,

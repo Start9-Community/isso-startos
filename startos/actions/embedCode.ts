@@ -1,60 +1,81 @@
 import { sdk } from '../sdk'
-import { ownUiUrls } from '../utils'
+import { i18n } from '../i18n'
 
-// Shows the HTML snippet to paste into a page to render Isso comments, plus the
-// server's address(es) for reference.
-export const embedCode = sdk.Action.withoutInput(
+const { InputSpec, Value } = sdk
+
+// Build the HTML snippet for a chosen server address. The address is selected
+// from the comment server's externally-usable addresses: `.nonLocal` drops
+// loopback/link-local, and excluding `mdns` drops `.local` (useless for
+// embedding). https is forced so the script isn't mixed-content-blocked.
+const inputSpec = InputSpec.of({
+  address: Value.dynamicSelect(async ({ effects }) => {
+    const urls = await sdk.serviceInterface
+      .getOwn(
+        effects,
+        'comments',
+        (i) =>
+          i?.addressInfo?.nonLocal
+            .filter({ exclude: { kind: 'mdns' } })
+            .format() ?? [],
+      )
+      .const()
+    const addresses = [
+      ...new Set(
+        urls.map((u) => u.replace(/^http:\/\//, 'https://').replace(/\/$/, '')),
+      ),
+    ]
+    return {
+      name: i18n('Server Address'),
+      description: i18n(
+        'Choose the address your visitors will load comments from. For a public site, use a public domain (see the Instructions tab).',
+      ),
+      values: addresses.reduce(
+        (o, u) => ({ ...o, [u]: u }),
+        {} as Record<string, string>,
+      ),
+      default: addresses[0] ?? '',
+    }
+  }),
+})
+
+export const embedCode = sdk.Action.withInput(
   'embed-code',
 
   async ({ effects }) => ({
-    name: 'Embed Code',
-    description: 'Get the HTML snippet to add comments to your website',
+    name: i18n('Embed Code'),
+    description: i18n('Get the HTML snippet to add comments to your website'),
     warning: null,
     allowedStatuses: 'any',
     group: null,
     visibility: 'enabled',
   }),
 
-  async ({ effects }) => {
-    const urls = await ownUiUrls(effects)
-    const base = (urls[0] ?? 'http://localhost').replace(/\/$/, '')
+  inputSpec,
 
+  async ({ effects }) => ({}),
+
+  async ({ effects, input }) => {
+    const base = input.address.replace(/\/$/, '')
     const snippet =
-      `<script data-isso="${base}/"\n` +
-      `        src="${base}/js/embed.min.js"></script>\n` +
+      `<script\n` +
+      `  data-isso="${base}/"\n` +
+      `  src="${base}/js/embed.min.js"\n` +
+      `></script>\n` +
       `<section id="isso-thread"></section>`
-
-    const addresses = urls.length
-      ? urls.map((u) => u.replace(/\/$/, '')).join('\n')
-      : '(no addresses available yet — start the server first)'
 
     return {
       version: '1' as const,
       title: 'Embed Code',
       message:
-        "Paste the snippet below into any page where you want comments to appear. Make sure that page's origin is listed under Websites in the Configure action.",
+        "Paste this snippet into any page where comments should appear. That page's origin must be listed under Configure → Websites.",
       result: {
-        type: 'group' as const,
-        value: [
-          {
-            name: 'HTML Snippet',
-            description: 'Place where comments should appear on your page.',
-            type: 'single' as const,
-            value: snippet,
-            copyable: true,
-            qr: false,
-            masked: false,
-          },
-          {
-            name: 'Server Address(es)',
-            description: 'Isso is reachable at these addresses.',
-            type: 'single' as const,
-            value: addresses,
-            copyable: false,
-            qr: false,
-            masked: false,
-          },
-        ],
+        type: 'single' as const,
+        name: 'HTML Snippet',
+        description: null,
+        value: snippet,
+        copyable: true,
+        masked: false,
+        qr: false,
       },
     }
   },

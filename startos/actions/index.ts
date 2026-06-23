@@ -1,9 +1,13 @@
 import { sdk } from '../sdk'
-import { configure } from './configure'
-import { adminLogin } from './adminLogin'
+import { configureServer } from './configure/server'
+import { configureSmtp } from './configure/smtp'
+import { setWebsites } from './configure/websites'
 import { embedCode } from './embedCode'
+import { setAdminPassword } from './setAdminPassword'
 
 export const actions = sdk.Actions.of()
-  .addAction(configure)
+  .addAction(setWebsites)
+  .addAction(configureServer)
+  .addAction(configureSmtp)
+  .addAction(setAdminPassword)
   .addAction(embedCode)
-  .addAction(adminLogin)
