@@ -1,7 +1,7 @@
 {
   "include": ["startos/**/*.ts", "node_modules/**/startos"],
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2018",
     "module": "CommonJS",
     "moduleResolution": "node",
     "esModuleInterop": true,
