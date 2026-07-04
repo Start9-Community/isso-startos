@@ -10,7 +10,7 @@ export const manifest = setupManifest({
   id: 'isso',
   title: 'Isso',
   license: 'MIT',
-  packageRepo: 'https://github.com/kwsantiago/isso-startos',
+  packageRepo: 'https://github.com/Start9-Community/isso-startos',
   upstreamRepo: 'https://github.com/isso-comments/isso',
   marketingUrl: 'https://isso-comments.de/',
   donationUrl: null,
