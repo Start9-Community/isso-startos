@@ -19,7 +19,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const cfg = await issoCfg.read().const(effects)
   if (!cfg) throw new Error('isso.cfg has not been seeded')
 
-  const sub = await sdk.SubContainer.of(
+  const sub = sdk.SubContainer.of(
     effects,
     { imageId: 'isso' },
     sdk.Mounts.of()

@@ -1,5 +1,6 @@
 import { sdk } from '../sdk'
 import { i18n } from '../i18n'
+import { commentsInterfaceId, mainHostId } from '../interfaces'
 
 const { InputSpec, Value } = sdk
 
@@ -9,15 +10,19 @@ const { InputSpec, Value } = sdk
 // embedding). https is forced so the script isn't mixed-content-blocked.
 const inputSpec = InputSpec.of({
   address: Value.dynamicSelect(async ({ effects }) => {
-    const urls = await sdk.serviceInterface
-      .getOwn(
-        effects,
-        'comments',
-        (i) =>
-          i?.addressInfo?.nonLocal
-            .filter({ exclude: { kind: 'mdns' } })
-            .format() ?? [],
-      )
+    const urls = await sdk.host
+      .getOwn(effects, mainHostId, (host) => {
+        const iface =
+          host &&
+          Object.values(host.bindings)
+            .flatMap((b) => Object.values(b.interfaces))
+            .find((i) => i.id === commentsInterfaceId)
+        return iface
+          ? iface.addressInfo.nonLocal
+              .filter({ exclude: { kind: 'mdns' } })
+              .format()
+          : []
+      })
       .const()
     const addresses = [
       ...new Set(

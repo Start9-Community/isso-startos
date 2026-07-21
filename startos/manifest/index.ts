@@ -10,7 +10,7 @@ export const manifest = setupManifest({
   id: 'isso',
   title: 'Isso',
   license: 'MIT',
-  packageRepo: 'https://github.com/kwsantiago/isso-startos',
+  packageRepo: 'https://github.com/Start9-Community/isso-startos',
   upstreamRepo: 'https://github.com/isso-comments/isso',
   marketingUrl: 'https://isso-comments.de/',
   donationUrl: null,
@@ -25,14 +25,6 @@ export const manifest = setupManifest({
       source: { dockerTag: ISSO_IMAGE },
       arch: ['x86_64', 'aarch64'],
     },
-  },
-  alerts: {
-    install: null,
-    update: null,
-    uninstall: null,
-    restore: null,
-    start: null,
-    stop: null,
   },
   dependencies: {},
 })
