@@ -14,7 +14,6 @@ export const manifest = setupManifest({
   upstreamRepo: 'https://github.com/isso-comments/isso',
   marketingUrl: 'https://isso-comments.de/',
   donationUrl: null,
-  docsUrls: ['https://isso-comments.de/docs/'],
   description: {
     short: shortDescription,
     long: longDescription,
