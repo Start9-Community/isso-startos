@@ -1,24 +1,18 @@
 <p align="center">
-  <img src="icon.svg" alt="Isso Logo" width="21%">
+  <img src="icon.png" alt="Isso Logo" width="21%">
 </p>
 
 # Isso on StartOS
 
-> **Upstream docs:** <https://isso-comments.de/docs/>
->
 > Everything not listed in this document should behave the same as upstream
 > Isso. If a feature, setting, or behavior is not mentioned here, the upstream
-> documentation is accurate and applicable.
+> documentation is accurate and fully applicable — see the Documentation
+> section of `instructions.md` for links.
 
-StartOS package for [Isso](https://isso-comments.de/), a lightweight,
-privacy-friendly commenting server written in Python, similar to Disqus. It lets
-visitors comment on your blog or website without handing their data to a third
-party. Comments are stored in a local SQLite database on your server and embedded
-into your pages with a single small JavaScript snippet.
+[Isso](https://github.com/isso-comments/isso) is a self-hosted commenting server: you embed a small script on your website and comments live on your server instead of a third party's. This package runs it, manages its configuration through actions rather than a config file the user edits, and generates the embed snippet with the right address already in it.
 
-Isso supports Markdown comments, threaded replies, author edit/delete within a
-time window, a moderation queue with an admin panel, email/SMTP notifications,
-Gravatar avatars, and basic spam protection (per-IP rate limiting).
+- **Upstream repo:** <https://github.com/isso-comments/isso>
+- **Wrapper repo:** <https://github.com/Start9-Community/isso-startos>
 
 ---
 
@@ -26,229 +20,174 @@ Gravatar avatars, and basic spam protection (per-IP rate limiting).
 
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Installation and First-Run Flow](#installation-and-first-run-flow)
-- [Configuration Management](#configuration-management)
-- [Network Access and Interfaces](#network-access-and-interfaces)
-- [Actions (StartOS UI)](#actions-startos-ui)
-- [Embedding Comments](#embedding-comments)
-- [Backups and Restore](#backups-and-restore)
-- [Health Checks](#health-checks)
+- [File Models](#file-models)
 - [Dependencies](#dependencies)
+- [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
+- [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
-- [What Is Unchanged from Upstream](#what-is-unchanged-from-upstream)
-- [Building](#building)
-- [License](#license)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-The package uses Isso's official prebuilt image, pinned to an immutable digest in
-`startos/manifest/index.ts`.
+One upstream image, consumed unmodified and pinned by digest as well as tag.
 
-| Image | Role | Source |
-| --- | --- | --- |
-| `isso` | Commenting server (gunicorn WSGI) | `ghcr.io/isso-comments/isso` |
+| Property      | Value                        |
+| ------------- | ---------------------------- |
+| Image         | `ghcr.io/isso-comments/isso` |
+| Architectures | x86_64, aarch64              |
 
-| Property | Value |
-| --- | --- |
-| Architectures | x86_64, aarch64 |
-| Entry command | Upstream entrypoint (`sdk.useEntrypoint()`), gunicorn on port 8080 |
-
----
+| Subcontainer | Purpose                                  |
+| ------------ | ---------------------------------------- |
+| `isso-sub`   | The only daemon — the one to `attach` to |
 
 ## Volume and Data Layout
 
-The package uses a single volume, `main`, with these subpaths:
+One volume, mounted twice — the image declares separate database and configuration volumes, so the package supplies a subpath for each.
 
-| Subpath in `main` volume | Container mount point | Purpose |
-| --- | --- | --- |
-| `db/` | `/db` (read-write) | SQLite database `comments.db` |
-| `config/` | `/config` (read-only) | `isso.cfg` — the typed config File Model (source of truth) |
-| `start9/store.json` | (package-internal) | The SDK SMTP selection only (for form prefill) |
+| Volume            | Mount Point | Purpose                    |
+| ----------------- | ----------- | -------------------------- |
+| `main` / `db`     | `/db`       | The comments database      |
+| `main` / `config` | `/config`   | The rendered configuration |
 
----
+The package's own store sits alongside them on the same volume.
 
-## Installation and First-Run Flow
+The database is a single SQLite file, which is what makes the backup strategy simple — see [Backups and Restore](#backups-and-restore).
 
-The daemon does not start until one **critical task** is completed (StartOS
-surfaces it in place of the normal controls):
+## File Models
 
-- **Set Admin Password** — generate the password for the `/admin` moderation
-  panel. The panel is always authenticated, so the service stays stopped until a
-  password exists. The password is created here, **not** at install; re-run it any
-  time to rotate it.
+Two models, and the division is unusual: the application's own config file is the source of truth for nearly everything, and the store holds one thing that file cannot express.
 
-Websites are **not** a blocker: the config ships with a seeded `localhost`
-placeholder origin, so Isso's CORS allowlist is never empty and the server starts
-as soon as the password is set — letting you explore before adding any real site.
-Add the origins that will actually embed comments under **Configure → Websites**
-whenever you're ready.
+| File         | Format | Modelled                | Written by               |
+| ------------ | ------ | ----------------------- | ------------------------ |
+| `isso.cfg`   | INI    | Yes — `FileHelper.ini`  | Init and the actions     |
+| `store.json` | JSON   | Yes — `FileHelper.json` | Init and the SMTP action |
 
-Once the password is set, Isso starts and reads `isso.cfg` directly. Startup is
-fast; there is no large first-boot download.
+**`isso.cfg` is where every setting lives**, written by the configuration actions rather than edited by hand. The database path is pinned, and the admin panel is pinned on — everything else is user-owned through the actions: the website allowlist, moderation behavior, spam guarding, the edit window, and the SMTP credentials.
 
----
+**One placeholder in the allowlist is load-bearing.** Isso refuses to start with an empty allowlist, so the package seeds a local placeholder at install and the Websites action always keeps it appended and hidden from the form. That is what lets the service boot before any real website has been added.
 
-## Configuration Management
+**`store.json` holds one thing: the SMTP _selection_** — disabled, the server's own SMTP, or custom. The config file can only hold concrete credentials, not the fact that they came from the server's settings, so the selection is kept here for the form to pre-fill and the action resolves it into the config file.
 
-`isso.cfg` is the source of truth, modeled directly as a typed File Model
-(`startos/fileModels/issoCfg.ts`). The service actions read and write it, and
-because it is a real File Model, settings you change by hand over SSH are honored
-too — including Isso options this package doesn't expose. The model regenerates
-the file on every write, but it carries through any keys or whole sections it
-doesn't manage (e.g. `[hash]`, `[markup]`, `[rss]`), so hand-set extras survive;
-only the values the actions own are overwritten, and enforced keys (`dbpath`,
-`[admin] enabled`) always win. Manage the common settings through the
-**Configure** group — **Websites** for the embedding origins, **Server** for
-moderation / edit window / spam protection, and **Email Notifications** for SMTP —
-plus the standalone **Set Admin Password**.
-
-The only value kept outside `isso.cfg` is the SDK SMTP *selection* (`system` /
-`custom` / `disabled`) in `store.json`, so the Email Notifications form can
-prefill it; that action resolves the selection and writes the concrete `[smtp]`
-keys into `isso.cfg`.
-
-Isso's `host` value (its CORS allowlist) is the **Websites** you set, plus a
-hidden `localhost` placeholder that is always kept so the allowlist is never empty
-(Isso won't start otherwise). The Websites action hides that entry and re-appends
-it on save, so you only ever see and manage your real origins. Enter each as a
-full `https://` origin — embed pages are served over HTTPS, so an `http://` entry
-would be mixed-content-blocked.
-
----
-
-## Network Access and Interfaces
-
-| Interface ID | Type | Port | Protocol | Purpose |
-| --- | --- | --- | --- | --- |
-| `comments` | `api` | 8080 | HTTP | The Isso comment server — embed endpoint, `/js/` client, and API. Its root is the fetch API, not a browsable page, so it is an `api` interface. |
-| `admin` | `ui` | 8080 | HTTP | The browsable `/admin` moderation panel |
-
-Both interfaces bind the **same** gunicorn port — Isso serves everything from one
-process, so `admin` is a convenience link to the moderation UI (the only
-human-browsable page; `comments`'s root is the fetch API), **not** a separate
-network boundary: wherever `comments` is exposed, `/admin` is reachable too (it is
-protected by its own password). Isso is plain HTTP, served over **Tor** and **LAN
-/ clearnet**
-(StartOS terminates TLS at its reverse proxy). Use the HTTPS address for embedding
-so browsers don't block mixed content.
-
----
-
-## Actions (StartOS UI)
-
-| Action ID | Group | Purpose | Availability |
-| --- | --- | --- | --- |
-| `set-websites` (Websites) | Configure | Set the origin(s) allowed to embed comments — Isso's CORS allowlist (a hidden `localhost` placeholder is always kept) | any |
-| `configure-server` (Server) | Configure | Moderation, edit window, spam protection, and display options | any |
-| `configure-smtp` (Email Notifications) | Configure | Email notifications over SMTP (the server's system SMTP or a custom server) + recipient | any |
-| `set-admin-password` | — | Generate (or rotate) the `/admin` password and return it (log in via the `admin` interface) | any |
-| `embed-code` | — | Pick a server address; returns the HTML embed snippet for it | any |
-
----
-
-## Embedding Comments
-
-1. Run **Configure → Websites** and add the origin(s) that will show comments,
-   including the scheme (e.g. `https://blog.example.com/`).
-2. Run **Embed Code**, select the server address to embed from (a public
-   Let's Encrypt domain for a public site — see
-   [Limitations](#limitations-and-differences)), and copy the snippet it returns:
-   ```html
-   <script
-     data-isso="https://comments.example.com/"
-     src="https://comments.example.com/js/embed.min.js"
-   ></script>
-   <section id="isso-thread"></section>
-   ```
-3. The page's origin must be one of the **Websites** you whitelisted, otherwise
-   the browser's CORS check blocks the comments.
-4. Run **Set Admin Password**, then open the **Moderation Panel** interface and
-   log in (no username — the password alone).
-
----
-
-## Backups and Restore
-
-**Included in backup:** the `main` volume — the comments database (`comments.db`),
-the config (`isso.cfg`, which holds all settings and the admin password), and
-`store.json`.
-**Restore:** standard StartOS restore flow (`restoreInit`); the server returns
-with all comments and settings intact.
-
----
-
-## Health Checks
-
-| Check | Method | Notes |
-| --- | --- | --- |
-| Isso Server | HTTP GET `/info` returns 200 | Isso's unauthenticated server-info endpoint |
-
----
+Both are seeded on **every** init, so a field added in a later version picks up its default on upgrade.
 
 ## Dependencies
 
 None.
 
----
+## Network Access and Interfaces
+
+**Two interfaces on one port**, because Isso serves everything from one server. The split is for discoverability, not isolation.
+
+| Interface        | Id         | Type | Port | Path      | Description                                    |
+| ---------------- | ---------- | ---- | ---- | --------- | ---------------------------------------------- |
+| Isso Server      | `comments` | api  | 8080 | —         | The address that goes in the embed snippet     |
+| Moderation Panel | `admin`    | ui   | 8080 | `/admin/` | The panel, logged into with the admin password |
+
+**The comments interface is an `api`, not a `ui`, and that is accurate rather than pedantic**: its root is Isso's API and returns an error to a browser, not a page. The only human-browsable page is the moderation panel, which is why that one gets a `ui` interface and a deep link.
+
+**The address you embed must be one the reader's browser can reach**, which in practice means a public one — a Tor or `.local` address works for you and not for your visitors. It also has to be in the website allowlist, or the browser's cross-origin check will block it.
+
+## Installation and First-Run Flow
+
+Install seeds the configuration and the store, then raises one critical task: set the admin password. **Until that is done the panel would be served unauthenticated**, which is what the task exists to prevent.
+
+Websites are deliberately **not** gated the same way. The placeholder in the allowlist means Isso starts without any user input, and real origins can be added whenever — a server with no websites yet is a valid state, an unauthenticated moderation panel is not.
+
+Once running, the sequence is: add your website's origin, generate the embed snippet, and paste it into your site.
+
+## Actions
+
+Five actions, three of them in a configuration group.
+
+### Set Admin Password
+
+Generates the moderation panel's password and shows it once. Run it when its task appears, or to rotate the credential.
+
+- **What it changes:** the password in `isso.cfg`.
+- **Cost:** the service restarts to pick it up.
+- **Repeat safety:** each run generates a **new** password and invalidates the old one.
+
+### Websites — Configure group
+
+The list of website origins allowed to embed comments from this server.
+
+- **What it changes:** the allowlist in `isso.cfg`.
+- **Repeat safety:** idempotent.
+- **This is a CORS allowlist, and it is what makes embedding work.** An origin missing from it gets its comment requests blocked by the visitor's browser, which presents as comments simply not loading, with nothing in Isso's logs.
+- **The placeholder entry is kept automatically** and is not shown in the form.
+
+### Server — Configure group
+
+Moderation, spam protection, rate limiting, which fields are required, the edit window, avatars, and the recent-comments endpoint.
+
+- **What it changes:** the corresponding sections of `isso.cfg`.
+- **Cost:** applies on restart.
+- **Repeat safety:** idempotent.
+- **Moderation is the setting with the most visible effect** — with it on, comments are held until approved in the panel rather than appearing immediately.
+- **Unapproved comments are purged after a period**, so a moderation queue left unattended eventually empties itself.
+
+### Email Notifications — Configure group
+
+Points Isso's notifications at the server's own SMTP or a custom server.
+
+- **What it changes:** the selection in the store, and the resolved credentials in `isso.cfg`.
+- **Cost:** applies on restart.
+- **Repeat safety:** idempotent.
+- **Without it, notifications go nowhere useful** — Isso's default is to write them to its own log, which is fine for a test and useless for moderation.
+
+### Embed Code
+
+Generates the snippet to paste into your website, with a chosen server address already filled in.
+
+- **What it changes:** nothing. It is a read.
+- **Repeat safety:** read-only.
+- **Input:** which of this service's addresses to embed. **Pick the one your visitors can reach** — the action offers what exists, and cannot know which is public.
+
+## Tasks
+
+One.
+
+| Task               | Severity   | Raised when                       | Cleared when    |
+| ------------------ | ---------- | --------------------------------- | --------------- |
+| Set Admin Password | `critical` | The configuration has no password | The action runs |
+
+It is keyed on the configuration rather than on install, so it also appears if the password is ever cleared.
+
+`critical` blocks the service from starting and suspends the ordinary controls, so a fresh install shows the task and nothing else.
+
+## Health Checks
+
+One check, on the only daemon.
+
+| Check     | Displayed as  | Method                 |
+| --------- | ------------- | ---------------------- |
+| `primary` | "Isso Server" | Port 8080 is listening |
+
+It reports that the server is answering, which is not the same as comments working on your site. **The two common failures are both invisible here**: an origin missing from the allowlist, and an embedded address the visitor's browser cannot reach. Both present as comments not loading, and both are diagnosed in the browser's console rather than on this page.
+
+## Backups and Restore
+
+The `main` volume is copied wholesale — `sdk.Backups.ofVolumes('main')`. That is every comment, the configuration, and the store.
+
+**A plain copy is consistent here** because the database is a single SQLite file and StartOS stops the service before taking a backup — there is no partially-written state to catch.
+
+A restored instance comes back with its comments, its allowlist, and the same admin password. The embed snippet on your website keeps working provided the restored server is reachable at the same address you embedded.
 
 ## Limitations and Differences
 
-1. **A localhost placeholder is always whitelisted** — Isso won't start with an
-   empty `host` (upstream CORS behavior), so the package seeds, and always
-   re-appends, a `localhost` origin. Isso therefore starts with no user-configured
-   website; add your real origins under **Configure → Websites** for comments to
-   load on your pages.
-2. **Public embedding needs a publicly-trusted certificate** — visitors load
-   comments cross-origin from the `comments` interface, so for a public site it
-   must be reached via a **Let's Encrypt domain**. A bare IP, `.onion`, or
-   `.local` address can only carry the server's Root CA, which arbitrary
-   visitors' browsers don't trust — and public CAs do not issue certificates for
-   IP addresses. The Root-CA path is only viable for devices that have installed
-   the Root CA (personal/private use).
-3. **No bundled demo page** — the production gunicorn image does not serve Isso's
-   development demo page; comments are viewed on your own embedding pages.
-4. **Mixed content** — embed pages served over HTTPS must use the HTTPS Isso
-   address; mixing HTTP and HTTPS will be blocked by the browser.
-5. **Settings are file-backed** — manage them through the Configure actions;
-   `isso.cfg` is a typed File Model, so hand edits over SSH are honored too,
-   including Isso options the actions don't expose (preserved across rewrites —
-   see [Configuration Management](#configuration-management)).
-
----
-
-## What Is Unchanged from Upstream
-
-- The Isso server runtime, SQLite storage, JS client, and admin panel.
-- All comment behavior: Markdown, threading, edit/delete windows, moderation.
-- Disqus/WordPress import tooling shipped in the image.
-
----
-
-## Building
-
-Requires the [StartOS SDK](https://docs.start9.com/) (`start-cli`), Node.js, and
-Docker.
-
-```console
-make x86      # build isso_x86_64.s9pk
-make arm      # build isso_aarch64.s9pk
-make install  # install the freshly built s9pk to a configured server
-```
-
-> Building `x86` and `arm` back-to-back on the same machine can fail on the
-> second arch (both resolve to the same pinned image digest in the local store);
-> CI builds each architecture on a separate runner.
-
----
-
-## License
-
-The StartOS packaging code in this repository is **MIT** (see [LICENSE](LICENSE)).
-The software it installs and runs, **Isso**, is also **MIT** — see
-<https://github.com/isso-comments/isso>.
+1. **The embedded address is baked into your website**, so moving the server to a different address means updating the snippet everywhere it appears.
+2. **An origin missing from the allowlist fails silently** from Isso's side — the block happens in the visitor's browser.
+3. **The configuration is action-managed.** Hand edits to `isso.cfg` are overwritten by the next action that touches that section.
+4. **A placeholder origin is always in the allowlist** and cannot be removed.
+5. **Notifications go to the log until SMTP is configured.**
+6. **Both interfaces share one port.** The split exists for discoverability, so restricting one does not restrict the other.
+7. **The admin password can be rotated but not chosen**, and rotating it restarts the service.
 
 ---
 
@@ -256,37 +195,32 @@ The software it installs and runs, **Isso**, is also **MIT** — see
 
 ```yaml
 package_id: isso
-architectures: [x86_64, aarch64]
-image: ghcr.io/isso-comments/isso           # multi-arch, pinned by digest in the manifest
-entry: sdk.useEntrypoint()                  # gunicorn, port 8080
+image: ghcr.io/isso-comments/isso # pinned by digest as well as tag
+architectures:
+  - x86_64
+  - aarch64
+subcontainers:
+  - isso-sub
 volumes:
   main:
-    db: /db                                 # comments.db (read-write)
-    config: /config                         # isso.cfg — the config File Model (read-only mount)
-    store: start9/store.json                # SDK SMTP selection only (form prefill)
-interfaces:
-  comments:
-    type: api                               # comment server / embed endpoint (root is the fetch API)
-    port: 8080
-    protocol: http                          # Tor + LAN
-  admin:
-    type: ui                                # browsable /admin moderation panel
-    port: 8080                              # same port as comments — /admin deep-link, not isolated
-    protocol: http
-config_model: isso.cfg (FileHelper.raw File Model; source of truth). store.json holds only the SMTP selection.
-cors_hosts: the configured Websites (Isso [general] host)
-dependencies: none
-health: GET /info == 200
+    db: /db
+    config: /config
+file_models:
+  - isso.cfg # every Isso setting; written by the actions
+  - start9/store.json # the SMTP selection only
+startos_managed_env_vars: []
+dependencies: []
+interfaces: # both on port 8080; one server, split for discoverability
+  comments: { type: api, port: 8080 } # the address to embed
+  admin: { type: ui, port: 8080, path: /admin/ }
 actions:
-  - set-websites        # Configure > Websites; CORS allowlist (your origins; a hidden localhost placeholder is always kept)
-  - configure-server    # Configure > Server; moderation, edit window, guard
-  - configure-smtp      # Configure > Email Notifications; SMTP + recipient
-  - set-admin-password  # generate / rotate the /admin password
-  - embed-code          # pick an address; returns the embed snippet
-notes:
-  - a localhost placeholder is always whitelisted, so Isso starts without user input; real comments load on a page only once that page's origin is added under Websites
-  - admin panel is always enabled; the Set Admin Password critical task keeps the service stopped until a password is set, so /admin is never unauthenticated
-  - the admin interface shares the comments port — discoverability, not network isolation
-  - isso.cfg is regenerated on write but preserves hand-set options/sections it doesn't model (e.g. [hash], [markup], [rss]); enforced keys (dbpath, [admin] enabled) always win
-  - production image serves no demo page
+  - set-websites
+  - configure-server
+  - configure-smtp
+  - set-admin-password
+  - embed-code
+tasks:
+  - { action: set-admin-password, severity: critical }
+health_checks:
+  - primary # displayed "Isso Server"; says nothing about embedding
 ```
