@@ -15,7 +15,7 @@ const guardSpec = InputSpec.of({
   enabled: Value.toggle({
     name: i18n('Enable Spam Protection'),
     description: i18n(
-      'Rate-limit comments per IP and apply basic abuse protection. Recommended in production.',
+      "Rate-limit comments per IP address and enforce the rules below. With it off, none of them apply. Isso's developers recommend keeping it on in production.",
     ),
     default: true,
   }),
@@ -45,7 +45,9 @@ const guardSpec = InputSpec.of({
   }),
   replyToSelf: Value.toggle({
     name: i18n('Allow Reply To Self'),
-    description: i18n('Let commenters reply to their own comments.'),
+    description: i18n(
+      'Let commenters reply to their own comment while they can still edit it. Once the edit window has passed, they can reply to it either way.',
+    ),
     default: false,
   }),
 })
@@ -54,7 +56,7 @@ const inputSpec = InputSpec.of({
   moderationEnabled: Value.toggle({
     name: i18n('Comment Moderation'),
     description: i18n(
-      'Hold new comments in a queue until you approve them in the admin panel. Recommended.',
+      'Hold new comments in a queue, hidden from other visitors, until you approve them in the moderation panel. Comments posted before you turn this on are not affected.',
     ),
     default: true,
   }),
@@ -78,7 +80,9 @@ const inputSpec = InputSpec.of({
   }),
   gravatar: Value.toggle({
     name: i18n('Gravatar Avatars'),
-    description: i18n('Show Gravatar profile images next to comments.'),
+    description: i18n(
+      "Show each commenter's Gravatar image instead of a generated avatar. Visitors' browsers load these images from gravatar.com.",
+    ),
     default: false,
   }),
   latestEnabled: Value.toggle({
@@ -91,7 +95,7 @@ const inputSpec = InputSpec.of({
   guard: Value.object(
     {
       name: i18n('Spam Protection'),
-      description: i18n('Rate limiting and comment requirements.'),
+      description: null,
     },
     guardSpec,
   ),

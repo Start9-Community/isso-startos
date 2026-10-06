@@ -26,7 +26,7 @@ const bool = (def: boolean) =>
 const int = (def: number) =>
   z.union([z.number(), z.string().transform((s) => Number(s))]).catch(def)
 
-const general = z.object({
+const general = z.looseObject({
   // Enforced: the SQLite path is the StartOS mount point, never user-set.
   dbpath: z.literal(dbPath).catch(dbPath),
   // Isso's CORS allowlist: the website origins allowed to embed comments. Stored
@@ -49,7 +49,7 @@ const general = z.object({
   'latest-enabled': bool(false),
 })
 
-const admin = z.object({
+const admin = z.looseObject({
   // Enforced: the panel is always authenticated. An empty password is never
   // served — the Set Admin Password critical task stops the service until one is
   // set — so there is no reason to ever disable the panel.
@@ -57,12 +57,12 @@ const admin = z.object({
   password: z.string().catch(''),
 })
 
-const moderation = z.object({
+const moderation = z.looseObject({
   enabled: bool(true),
   'purge-after': z.string().catch('30d'),
 })
 
-const guard = z.object({
+const guard = z.looseObject({
   enabled: bool(true),
   ratelimit: int(2),
   'require-author': bool(false),
@@ -73,7 +73,7 @@ const guard = z.object({
 // Resolved SMTP credentials (the Email Notifications action resolves the SDK smtp
 // selection — disabled/system/custom — into these). Isso ignores [smtp] unless
 // `notify = smtp`.
-const smtp = z.object({
+const smtp = z.looseObject({
   username: z.string().catch(''),
   password: z.string().catch(''),
   host: z.string().catch('localhost'),
@@ -87,7 +87,7 @@ const smtp = z.object({
 
 // A missing section falls back to its own field-level defaults via parse({}), so
 // every default is declared exactly once — on the field.
-const shape = z.object({
+const shape = z.looseObject({
   general: general.catch(() => general.parse({})),
   admin: admin.catch(() => admin.parse({})),
   moderation: moderation.catch(() => moderation.parse({})),
@@ -140,7 +140,7 @@ function collectExtras(raw: unknown): Extras {
 
 // On a fresh read the extras sit in the parsed sections; on merge's re-validate
 // of its own output they arrive pre-collected under `extras` — pass those through
-// rather than re-scanning (the sections have already been stripped by then).
+// rather than re-scanning.
 function validate(raw: unknown): IssoCfg {
   const carried = (raw as { extras?: unknown } | null)?.extras
   const extras =

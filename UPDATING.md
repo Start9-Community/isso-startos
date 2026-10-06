@@ -31,4 +31,4 @@ The current pin is the version after the `:` in `ghcr.io/isso-comments/isso:<ver
 
 3. Bump `version` in `startos/versions/current.ts` to `<new version>:0` and rewrite its release notes. Spin off a new version file only if the bump needs a migration — see the [Versions](https://docs.start9.com/packaging) guide.
 
-4. Before releasing, re-check the rendered config against any new or renamed keys in Isso's bundled `isso.cfg` (sections `[general]`, `[admin]`, `[moderation]`, `[guard]`, `[smtp]`). `startos/utils.ts` `renderIssoCfg` writes these keys explicitly; a renamed upstream key is silently ignored by Isso, so a setting could stop taking effect without an error.
+4. Before releasing, re-check the rendered config against any new or renamed keys in Isso's bundled `isso.cfg` (sections `[general]`, `[admin]`, `[moderation]`, `[guard]`, `[smtp]`). `serialize` in `startos/fileModels/issoCfg.ts` writes these keys explicitly; a renamed upstream key is silently ignored by Isso, so a setting could stop taking effect without an error.
