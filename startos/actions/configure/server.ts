@@ -15,7 +15,7 @@ const guardSpec = InputSpec.of({
   enabled: Value.toggle({
     name: i18n('Enable Spam Protection'),
     description: i18n(
-      "Rate-limit comments per IP address and enforce the rules below. With it off, none of them apply. Isso's developers recommend keeping it on in production.",
+      "Rate-limit comments per IP address and enforce the rules below on the server. With it off, the comment form still applies Require Name, Require Email, and Allow Reply To Self. Isso's developers recommend keeping it on in production.",
     ),
     default: true,
   }),

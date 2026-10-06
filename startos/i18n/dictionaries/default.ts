@@ -21,7 +21,7 @@ const dict = {
   // actions/configure/server.ts
   'Use a number and unit, e.g. 15m, 2h, 7d, or 1h30m.': 11,
   'Enable Spam Protection': 12,
-  "Rate-limit comments per IP address and enforce the rules below. With it off, none of them apply. Isso's developers recommend keeping it on in production.": 13,
+  "Rate-limit comments per IP address and enforce the rules below on the server. With it off, the comment form still applies Require Name, Require Email, and Allow Reply To Self. Isso's developers recommend keeping it on in production.": 13,
   'Rate Limit': 14,
   'Maximum number of new comments allowed per minute per IP.': 15,
   'per minute': 16,
