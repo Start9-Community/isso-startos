@@ -21,7 +21,7 @@ const dict = {
   // actions/configure/server.ts
   'Use a number and unit, e.g. 15m, 2h, 7d, or 1h30m.': 11,
   'Enable Spam Protection': 12,
-  'Rate-limit comments per IP and apply basic abuse protection. Recommended in production.': 13,
+  "Rate-limit comments per IP address and enforce the rules below on the server. With it off, the comment form still applies Require Name, Require Email, and Allow Reply To Self. Isso's developers recommend keeping it on in production.": 13,
   'Rate Limit': 14,
   'Maximum number of new comments allowed per minute per IP.': 15,
   'per minute': 16,
@@ -30,19 +30,18 @@ const dict = {
   'Require Email': 19,
   'Force commenters to enter an email address (not validated).': 20,
   'Allow Reply To Self': 21,
-  'Let commenters reply to their own comments.': 22,
+  'Let commenters reply to their own comment while they can still edit it. Once the edit window has passed, they can reply to it either way.': 22,
   'Comment Moderation': 23,
-  'Hold new comments in a queue until you approve them in the admin panel. Recommended.': 24,
+  'Hold new comments in a queue, hidden from other visitors, until you approve them in the moderation panel. Comments posted before you turn this on are not affected.': 24,
   'Edit Window': 25,
   'How long a visitor may edit or delete their own comment after posting, e.g. 15m, 2h, 7d.': 26,
   'Purge Unapproved Comments After': 27,
   'Remove still-unapproved comments from the moderation queue after this period, e.g. 30d.': 28,
   'Gravatar Avatars': 29,
-  'Show Gravatar profile images next to comments.': 30,
+  "Show each commenter's Gravatar image instead of a generated avatar. Visitors' browsers load these images from gravatar.com.": 30,
   'Enable /latest Endpoint': 31,
   'Serve the /latest endpoint that returns recent comments across all threads.': 32,
   'Spam Protection': 33,
-  'Rate limiting and comment requirements.': 34,
   Server: 35,
   'Moderation, edit window, spam protection, and display options.': 36,
 
@@ -57,6 +56,7 @@ const dict = {
   // actions/setAdminPassword.ts
   'Set Admin Password': 43,
   'Generate a new random password for the Isso moderation panel at /admin. Run this again at any time to reset it.': 44,
+  'Replaces the current moderation panel password; the old one stops working.': 51,
 
   // actions/embedCode.ts
   'Server Address': 45,

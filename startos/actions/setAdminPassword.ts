@@ -18,7 +18,11 @@ export const setAdminPassword = sdk.Action.withoutInput(
     description: i18n(
       'Generate a new random password for the Isso moderation panel at /admin. Run this again at any time to reset it.',
     ),
-    warning: null,
+    warning: (await issoCfg.read((c) => c.admin.password).const(effects))
+      ? i18n(
+          'Replaces the current moderation panel password; the old one stops working.',
+        )
+      : null,
     allowedStatuses: 'any',
     group: null,
     visibility: 'enabled',

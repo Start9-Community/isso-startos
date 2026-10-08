@@ -6,7 +6,7 @@ import { sdk } from '../sdk'
 // SMTP *selection* (disabled / use the server's system SMTP / custom), so the
 // Email Notifications form can prefill it. That action resolves the selection
 // and writes the concrete credentials into isso.cfg [smtp].
-const storeConfigSchema = z.object({
+const storeConfigSchema = z.looseObject({
   smtp: smtpShape.catch({ selection: 'disabled', value: {} }),
 })
 

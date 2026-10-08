@@ -38,7 +38,7 @@ const inputSpec = InputSpec.of({
         (o, u) => ({ ...o, [u]: u }),
         {} as Record<string, string>,
       ),
-      default: addresses[0] ?? '',
+      default: addresses[0] ?? null,
     }
   }),
 })
@@ -74,13 +74,11 @@ export const embedCode = sdk.Action.withInput(
       message:
         "Paste this snippet into any page where comments should appear. That page's origin must be listed under Configure → Websites.",
       result: {
-        type: 'single' as const,
+        type: 'multiline' as const,
         name: 'HTML Snippet',
         description: null,
         value: snippet,
         copyable: true,
-        masked: false,
-        qr: false,
       },
     }
   },

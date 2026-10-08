@@ -50,7 +50,7 @@ Each visitor's browser loads comments **directly from the Isso Server**, cross-o
 
 ## Moderating comments
 
-Open the **Moderation Panel** interface and log in with the password from **Set Admin Password** — there is no username, just the password. From there you can approve, edit, and delete comments. Run **Set Admin Password** again to set a new one.
+Open the **Moderation Panel** interface and log in with the password from **Set Admin Password** — there is no username, just the password. From there you can approve, edit, and delete comments. Run **Set Admin Password** again to set a new one; it asks you to confirm first, because the old password stops working.
 
 ## Email notifications (optional)
 

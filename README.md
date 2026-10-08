@@ -65,10 +65,10 @@ Two models, and the division is unusual: the application's own config file is th
 
 | File         | Format | Modelled                | Written by               |
 | ------------ | ------ | ----------------------- | ------------------------ |
-| `isso.cfg`   | INI    | Yes — `FileHelper.ini`  | Init and the actions     |
+| `isso.cfg`   | INI    | Yes — `FileHelper.raw`  | Init and the actions     |
 | `store.json` | JSON   | Yes — `FileHelper.json` | Init and the SMTP action |
 
-**`isso.cfg` is where every setting lives**, written by the configuration actions rather than edited by hand. The database path is pinned, and the admin panel is pinned on — everything else is user-owned through the actions: the website allowlist, moderation behavior, spam guarding, the edit window, and the SMTP credentials.
+**`isso.cfg` is where every setting lives**, written by the configuration actions rather than edited by hand. The database path is pinned, and the admin panel is pinned on — everything else is user-owned through the actions: the website allowlist, moderation behavior, spam guarding, the edit window, and the SMTP credentials. It is Python configparser format (indented continuation lines for the allowlist), which the SDK's INI helper cannot round-trip, so the package parses and writes it itself. Options and sections the package does not model are kept verbatim on every write.
 
 **One placeholder in the allowlist is load-bearing.** Isso refuses to start with an empty allowlist, so the package seeds a local placeholder at install and the Websites action always keeps it appended and hidden from the form. That is what lets the service boot before any real website has been added.
 
@@ -111,7 +111,7 @@ Generates the moderation panel's password and shows it once. Run it when its tas
 
 - **What it changes:** the password in `isso.cfg`.
 - **Cost:** the service restarts to pick it up.
-- **Repeat safety:** each run generates a **new** password and invalidates the old one.
+- **Repeat safety:** each run generates a **new** password and invalidates the old one. Once a password exists, the action asks for confirmation before running.
 
 ### Websites — Configure group
 
@@ -148,6 +148,7 @@ Generates the snippet to paste into your website, with a chosen server address a
 - **What it changes:** nothing. It is a read.
 - **Repeat safety:** read-only.
 - **Input:** which of this service's addresses to embed. **Pick the one your visitors can reach** — the action offers what exists, and cannot know which is public.
+- **Result:** the snippet, line for line, in a copyable field.
 
 ## Tasks
 
@@ -165,9 +166,9 @@ It is keyed on the configuration rather than on install, so it also appears if t
 
 One check, on the only daemon.
 
-| Check     | Displayed as  | Method                 |
-| --------- | ------------- | ---------------------- |
-| `primary` | "Isso Server" | Port 8080 is listening |
+| Check     | Displayed as  | Method                           |
+| --------- | ------------- | -------------------------------- |
+| `primary` | "Isso Server" | `GET /info` on port 8080 answers |
 
 It reports that the server is answering, which is not the same as comments working on your site. **The two common failures are both invisible here**: an origin missing from the allowlist, and an embedded address the visitor's browser cannot reach. Both present as comments not loading, and both are diagnosed in the browser's console rather than on this page.
 
@@ -183,7 +184,7 @@ A restored instance comes back with its comments, its allowlist, and the same ad
 
 1. **The embedded address is baked into your website**, so moving the server to a different address means updating the snippet everywhere it appears.
 2. **An origin missing from the allowlist fails silently** from Isso's side — the block happens in the visitor's browser.
-3. **The configuration is action-managed.** Hand edits to `isso.cfg` are overwritten by the next action that touches that section.
+3. **The configuration is action-managed.** A hand edit to an option the package models is overwritten by the next action that sets it; options and sections it does not model survive.
 4. **A placeholder origin is always in the allowlist** and cannot be removed.
 5. **Notifications go to the log until SMTP is configured.**
 6. **Both interfaces share one port.** The split exists for discoverability, so restricting one does not restrict the other.

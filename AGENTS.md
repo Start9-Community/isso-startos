@@ -18,16 +18,23 @@ Freshly scaffolded? Work the
 guide page, not a file in this repo — read it, don't copy it in.
 
 Keep `README.md` (technical reference for an AI support or administering agent) and
-`instructions.md` (end-user docs) in sync with your changes.
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
 
-**Bugs and feature requests are GitHub issues on this repo** — file them as you find them.
+**Fix a defect you spot rather than reporting it** — you have the package open and the
+context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
+make: you can't pin the cause down, two defensible fixes exist, or it's too large to ride on
+the work in hand. An open issue is a report, not a queue — implement one when you're asked
+to or when it's labelled `Approved`, then close it with `Closes #<n>`.
+
 Don't record work in the repo instead: no `TODO.md`, no `NOTES.md`, no `PLAN.md`. What you
 verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **Never let the CORS allowlist go empty.** Isso refuses to start without one, so the file model seeds a placeholder origin and the Websites action always re-appends it, hidden from the form. That is what lets the service boot before the user has added a real website.
-- **The comments interface is `type: 'api'` on purpose.** Its root is Isso's API — a browser GET returns "missing uri query" — so only the `/admin/` deep link is a `ui`.
-- **`isso.cfg` is the source of truth for every setting; `store.json` holds only the SMTP _selection_.** The config file can hold concrete credentials but not the fact that they came from the system SMTP, which is why the selection is kept separately for the form to pre-fill.
-- **Both file models are seeded on every init**, not just install, so schema defaults added in a later version land on upgrade and both files exist before `main` and the daemon read them.
-- **The image declares separate `/db` and `/config` volumes**, so the one `main` volume is mounted twice by subpath. Keep the subpaths and mountpoints in step with `utils.ts`.
+- **Never let the CORS allowlist go empty** — Isso refuses to start without one, so keep the placeholder origin the Websites action re-appends.
+- **Keep the comments interface `type: 'api'`** — its root is Isso's API, not a page; only the `/admin/` deep link is a `ui`.
+- **A key added to an `isso.cfg` section's shape must also be written by `serialize`** in `startos/fileModels/issoCfg.ts`. Modeled keys are excluded from the verbatim extras, so one the serializer omits is dropped on the next write.
+- **The one `main` volume is mounted twice by subpath** (`/db`, `/config`) — keep the subpaths and mountpoints in step with `utils.ts`.
