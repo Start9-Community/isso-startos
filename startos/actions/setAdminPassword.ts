@@ -39,12 +39,11 @@ export const setAdminPassword = sdk.Action.withoutInput(
         'Open the Moderation Panel interface and log in with the password below. There is no username.',
       result: {
         type: 'single' as const,
-        name: 'Admin Password',
-        description: null,
         value: adminPassword,
         masked: true,
         copyable: true,
         qr: false,
+        launchable: false,
       },
     }
   },
