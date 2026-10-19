@@ -75,10 +75,11 @@ export const embedCode = sdk.Action.withInput(
         "Paste this snippet into any page where comments should appear. That page's origin must be listed under Configure → Websites.",
       result: {
         type: 'multiline' as const,
-        name: 'HTML Snippet',
-        description: null,
         value: snippet,
         copyable: true,
+        qr: false,
+        masked: false,
+        filename: null,
       },
     }
   },
