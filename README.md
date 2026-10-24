@@ -35,12 +35,12 @@
 
 ## Image and Container Runtime
 
-One upstream image, pinned by digest as well as tag, with its CA certificates refreshed at build time (`Dockerfile`).
+One upstream image, pinned by digest as well as tag. The root `Dockerfile` upgrades its CA store, a temporary layer that comes out once upstream ships an image built on a fixed store.
 
-| Property      | Value                        |
-| ------------- | ---------------------------- |
-| Image         | `ghcr.io/isso-comments/isso` |
-| Architectures | x86_64, aarch64              |
+| Property      | Value                                            |
+| ------------- | ------------------------------------------------ |
+| Image         | `ghcr.io/isso-comments/isso` + root `Dockerfile` |
+| Architectures | x86_64, aarch64                                  |
 
 | Subcontainer | Purpose                                  |
 | ------------ | ---------------------------------------- |
@@ -196,7 +196,7 @@ A restored instance comes back with its comments, its allowlist, and the same ad
 
 ```yaml
 package_id: isso
-image: ghcr.io/isso-comments/isso # pinned by digest as well as tag
+image: ghcr.io/isso-comments/isso + root Dockerfile (CA store upgrade) # pinned by digest as well as tag
 architectures:
   - x86_64
   - aarch64
