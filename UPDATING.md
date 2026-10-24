@@ -1,6 +1,6 @@
 # Updating the upstream version
 
-This package runs Isso's official prebuilt image, [`ghcr.io/isso-comments/isso`](https://github.com/isso-comments/isso/pkgs/container/isso), published by the upstream [isso-comments/isso](https://github.com/isso-comments/isso) project. "Upstream" here means that project. The image is pinned by **both tag and digest** in `startos/manifest/index.ts` (the `ISSO_IMAGE` constant).
+This package runs Isso's official prebuilt image, [`ghcr.io/isso-comments/isso`](https://github.com/isso-comments/isso/pkgs/container/isso), published by the upstream [isso-comments/isso](https://github.com/isso-comments/isso) project. "Upstream" here means that project. The image is pinned by **both tag and digest** in `startos/manifest/index.ts` (the `ISSO_IMAGE` constant), and `Dockerfile` builds on it to refresh its CA certificates.
 
 ## Determining the upstream version
 

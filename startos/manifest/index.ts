@@ -21,7 +21,7 @@ export const manifest = setupManifest({
   volumes: ['main'],
   images: {
     isso: {
-      source: { dockerTag: ISSO_IMAGE },
+      source: { dockerBuild: { buildArgs: { IMAGE: ISSO_IMAGE } } },
       arch: ['x86_64', 'aarch64'],
     },
   },

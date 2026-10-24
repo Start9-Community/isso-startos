@@ -35,7 +35,7 @@
 
 ## Image and Container Runtime
 
-One upstream image, consumed unmodified and pinned by digest as well as tag.
+One upstream image, pinned by digest as well as tag, with its CA certificates refreshed at build time (`Dockerfile`).
 
 | Property      | Value                        |
 | ------------- | ---------------------------- |
