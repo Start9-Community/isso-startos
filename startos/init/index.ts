@@ -6,6 +6,7 @@ import { sdk } from '../sdk'
 import { versionGraph } from '../versions'
 import { seedFiles } from './seedFiles'
 import { watchSetup } from './watchSetup'
+import { watchSystemSmtp } from './watchSystemSmtp'
 
 export const init = sdk.setupInit(
   restoreInit,
@@ -15,6 +16,7 @@ export const init = sdk.setupInit(
   actions,
   dependencies,
   watchSetup,
+  watchSystemSmtp,
 )
 
 export const uninit = sdk.setupUninit(versionGraph)

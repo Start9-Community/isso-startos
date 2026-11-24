@@ -63,16 +63,16 @@ The database is a single SQLite file, which is what makes the backup strategy si
 
 Two models, and the division is unusual: the application's own config file is the source of truth for nearly everything, and the store holds one thing that file cannot express.
 
-| File         | Format | Modelled                | Written by               |
-| ------------ | ------ | ----------------------- | ------------------------ |
-| `isso.cfg`   | INI    | Yes — `FileHelper.raw`  | Init and the actions     |
-| `store.json` | JSON   | Yes — `FileHelper.json` | Init and the SMTP action |
+| File         | Format | Modelled                | Written by                                     |
+| ------------ | ------ | ----------------------- | ---------------------------------------------- |
+| `isso.cfg`   | INI    | Yes — `FileHelper.raw`  | Init, the actions, and the system-SMTP watcher |
+| `store.json` | JSON   | Yes — `FileHelper.json` | Init and the SMTP action                       |
 
 **`isso.cfg` is where every setting lives**, written by the configuration actions rather than edited by hand. The database path is pinned, and the admin panel is pinned on — everything else is user-owned through the actions: the website allowlist, moderation behavior, spam guarding, the edit window, and the SMTP credentials. It is Python configparser format (indented continuation lines for the allowlist), which the SDK's INI helper cannot round-trip, so the package parses and writes it itself. Options and sections the package does not model are kept verbatim on every write.
 
 **One placeholder in the allowlist is load-bearing.** Isso refuses to start with an empty allowlist, so the package seeds a local placeholder at install and the Websites action always keeps it appended and hidden from the form. That is what lets the service boot before any real website has been added.
 
-**`store.json` holds one thing: the SMTP _selection_** — disabled, the server's own SMTP, or custom. The config file can only hold concrete credentials, not the fact that they came from the server's settings, so the selection is kept here for the form to pre-fill and the action resolves it into the config file.
+**`store.json` holds one thing: the SMTP _selection_** — disabled, the server's own SMTP, or custom. The config file can only hold concrete credentials, not the fact that they came from the server's settings, so the selection is kept here for the form to pre-fill. The action resolves it into the config file, and while the server's SMTP is selected, an init watcher rewrites those credentials whenever the server's SMTP settings change.
 
 Both are seeded on **every** init, so a field added in a later version picks up its default on upgrade.
 

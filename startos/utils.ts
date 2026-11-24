@@ -1,3 +1,7 @@
+import { T } from '@start9labs/start-sdk'
+import type { StoreConfig } from './fileModels/store.json'
+import { sdk } from './sdk'
+
 // The upstream image's gunicorn entrypoint binds 0.0.0.0:8080.
 export const uiPort = 8080
 
@@ -20,4 +24,54 @@ export const defaultHost = 'localhost'
 export const randomPassword = {
   charset: 'a-z,A-Z,0-9',
   len: 24,
+}
+
+// The isso.cfg values for an SMTP selection, minus the recipient (`to`), which the
+// action owns. `.const` re-runs a reactive init handler when the server's SMTP changes.
+export async function resolveIssoSmtp(
+  effects: T.Effects,
+  selection: StoreConfig['smtp'],
+) {
+  let resolved: T.SmtpValue | null = null
+  if (selection.selection === 'system') {
+    resolved = await sdk.getSystemSmtp(effects).const()
+    if (resolved && selection.value.customFrom) {
+      resolved = { ...resolved, from: selection.value.customFrom }
+    }
+  } else if (selection.selection === 'custom') {
+    const p = selection.value.provider.value
+    resolved = {
+      host: p.host,
+      from: p.from,
+      username: p.username,
+      password: p.password ?? null,
+      port: Number(p.security.value.port),
+      security: p.security.selection,
+    }
+  }
+
+  return {
+    notify: resolved ? ('smtp' as const) : ('stdout' as const),
+    smtp: resolved
+      ? {
+          username: resolved.username,
+          password: resolved.password ?? '',
+          host: resolved.host,
+          port: resolved.port,
+          // SDK security is 'tls' | 'starttls'; Isso's implicit-TLS is 'ssl'.
+          security:
+            resolved.security === 'tls'
+              ? ('ssl' as const)
+              : ('starttls' as const),
+          from: resolved.from,
+        }
+      : {
+          username: '',
+          password: '',
+          host: 'localhost',
+          port: 587,
+          security: 'starttls' as const,
+          from: '',
+        },
+  }
 }
