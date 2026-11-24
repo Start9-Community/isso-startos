@@ -62,6 +62,7 @@ export const configureSmtp = sdk.Action.withInput(
         'Enter a notification recipient email to enable email notifications.',
       )
     }
+    // Persist selection before locking isso.cfg; the watcher checks it under that lock.
     await storeJson.merge(effects, { smtp: input.smtp })
 
     const { notify, smtp } = await resolveIssoSmtp(effects, input.smtp)

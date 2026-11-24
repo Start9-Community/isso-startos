@@ -8,6 +8,16 @@ export const watchSystemSmtp = sdk.setupOnInit(async (effects) => {
   const selection = await storeJson.read((s) => s.smtp).const(effects)
   if (selection?.selection !== 'system') return
 
-  const { notify, smtp } = await resolveIssoSmtp(effects, selection)
-  await issoCfg.merge(effects, { general: { notify }, smtp })
+  await issoCfg.update(effects, async (cfg) => {
+    // Custom and disabled selections remain exclusively action-owned.
+    const currentSelection = await storeJson.read((s) => s.smtp).once()
+    if (!cfg || currentSelection?.selection !== 'system') return null
+
+    const { notify, smtp } = await resolveIssoSmtp(effects, currentSelection)
+    return {
+      ...cfg,
+      general: { ...cfg.general, notify },
+      smtp: { ...cfg.smtp, ...smtp },
+    }
+  })
 })
