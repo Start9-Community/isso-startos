@@ -1,8 +1,9 @@
-import { smtpPrefill, T } from '@start9labs/start-sdk'
+import { smtpPrefill } from '@start9labs/start-sdk'
 import { issoCfg } from '../../fileModels/issoCfg'
 import { storeJson } from '../../fileModels/store.json'
 import { i18n } from '../../i18n'
 import { sdk } from '../../sdk'
+import { resolveIssoSmtp } from '../../utils'
 
 const { InputSpec, Value } = sdk
 
@@ -61,55 +62,13 @@ export const configureSmtp = sdk.Action.withInput(
         'Enter a notification recipient email to enable email notifications.',
       )
     }
-    // Keep the selection so the form can prefill it next time.
+    // Persist selection before locking isso.cfg; the watcher checks it under that lock.
     await storeJson.merge(effects, { smtp: input.smtp })
 
-    // Resolve the selection into concrete credentials and write them to
-    // isso.cfg: 'system' pulls the server's StartOS-wide SMTP (optionally
-    // overriding From), 'custom' unpacks the provider variant.
-    let resolved: T.SmtpValue | null = null
-    if (input.smtp.selection === 'system') {
-      resolved = await sdk.getSystemSmtp(effects).const()
-      if (resolved && input.smtp.value.customFrom) {
-        resolved.from = input.smtp.value.customFrom
-      }
-    } else if (input.smtp.selection === 'custom') {
-      const p = input.smtp.value.provider.value
-      resolved = {
-        host: p.host,
-        from: p.from,
-        username: p.username,
-        password: p.password ?? null,
-        port: Number(p.security.value.port),
-        security: p.security.selection,
-      }
-    }
-
+    const { notify, smtp } = await resolveIssoSmtp(effects, input.smtp)
     await issoCfg.merge(effects, {
-      general: {
-        notify: resolved ? 'smtp' : 'stdout',
-        'reply-notifications': input.replyNotifications,
-      },
-      smtp: resolved
-        ? {
-            username: resolved.username,
-            password: resolved.password ?? '',
-            host: resolved.host,
-            port: resolved.port,
-            // SDK security is 'tls' | 'starttls'; Isso's implicit-TLS is 'ssl'.
-            security: resolved.security === 'tls' ? 'ssl' : 'starttls',
-            to: input.to?.trim() ?? '',
-            from: resolved.from,
-          }
-        : {
-            username: '',
-            password: '',
-            host: 'localhost',
-            port: 587,
-            security: 'starttls',
-            to: '',
-            from: '',
-          },
+      general: { notify, 'reply-notifications': input.replyNotifications },
+      smtp: { ...smtp, to: notify === 'smtp' ? (input.to?.trim() ?? '') : '' },
     })
   },
 )
