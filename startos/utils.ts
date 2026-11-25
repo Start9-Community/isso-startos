@@ -26,8 +26,13 @@ export const randomPassword = {
   len: 24,
 }
 
+export const smtpPasswordEnv = 'ISSO_SMTP_PASSWORD'
+// Isso expands environment variables in every option value.
+export const smtpPasswordRef = `\${${smtpPasswordEnv}}`
+
 // The isso.cfg values for an SMTP selection, minus the recipient (`to`), which the
-// action owns. `.const` re-runs a reactive init handler when the server's SMTP changes.
+// action owns, and the password the daemon gets in `smtpPasswordEnv` instead.
+// `.const` re-runs a reactive context when the server's SMTP changes.
 export async function resolveIssoSmtp(
   effects: T.Effects,
   selection: StoreConfig['smtp'],
@@ -52,10 +57,11 @@ export async function resolveIssoSmtp(
 
   return {
     notify: resolved ? ('smtp' as const) : ('stdout' as const),
+    password: resolved?.password ?? '',
     smtp: resolved
       ? {
           username: resolved.username,
-          password: resolved.password ?? '',
+          password: smtpPasswordRef,
           host: resolved.host,
           port: resolved.port,
           // SDK security is 'tls' | 'starttls'; Isso's implicit-TLS is 'ssl'.

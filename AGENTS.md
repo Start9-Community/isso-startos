@@ -37,4 +37,5 @@ verified, tried, and decided belongs in the commit message and the PR body.
 - **Never let the CORS allowlist go empty** — Isso refuses to start without one, so keep the placeholder origin the Websites action re-appends.
 - **Keep the comments interface `type: 'api'`** — its root is Isso's API, not a page; only the `/admin/` deep link is a `ui`.
 - **A key added to an `isso.cfg` section's shape must also be written by `serialize`** in `startos/fileModels/issoCfg.ts`. Modeled keys are excluded from the verbatim extras, so one the serializer omits is dropped on the next write.
+- **Never write a resolved SMTP password into `isso.cfg`; keep `[smtp] password` the `smtpPasswordRef` reference** — `main` passes the password in the daemon's env so the server's SMTP password stays off the backed-up volume, and must always set that variable, since Isso sends an unset reference as literal text.
 - **The one `main` volume is mounted twice by subpath** (`/db`, `/config`) — keep the subpaths and mountpoints in step with `utils.ts`.
