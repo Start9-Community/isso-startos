@@ -70,9 +70,9 @@ const guard = z.looseObject({
   'reply-to-self': bool(false),
 })
 
-// Resolved SMTP credentials (the Email Notifications action resolves the SDK smtp
-// selection — disabled/system/custom — into these). Isso ignores [smtp] unless
-// `notify = smtp`.
+// Resolved SMTP settings, the password as `smtpPasswordRef` (the Email
+// Notifications action resolves the SDK smtp selection — disabled/system/custom —
+// into these). Isso ignores [smtp] unless `notify = smtp`.
 const smtp = z.looseObject({
   username: z.string().catch(''),
   password: z.string().catch(''),

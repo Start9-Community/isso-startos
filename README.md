@@ -68,11 +68,13 @@ Two models, and the division is unusual: the application's own config file is th
 | `isso.cfg`   | INI    | Yes — `FileHelper.raw`  | Init, the actions, and the system-SMTP watcher |
 | `store.json` | JSON   | Yes — `FileHelper.json` | Init and the SMTP action                       |
 
-**`isso.cfg` is where every setting lives**, written by the configuration actions rather than edited by hand. The database path is pinned, and the admin panel is pinned on — everything else is user-owned through the actions: the website allowlist, moderation behavior, spam guarding, the edit window, and the SMTP credentials. It is Python configparser format (indented continuation lines for the allowlist), which the SDK's INI helper cannot round-trip, so the package parses and writes it itself. Options and sections the package does not model are kept verbatim on every write.
+**`isso.cfg` is where every setting lives**, written by the configuration actions rather than edited by hand. The database path is pinned, and the admin panel is pinned on — everything else is user-owned through the actions: the website allowlist, moderation behavior, spam guarding, the edit window, and the SMTP settings. It is Python configparser format (indented continuation lines for the allowlist), which the SDK's INI helper cannot round-trip, so the package parses and writes it itself. Options and sections the package does not model are kept verbatim on every write.
 
 **One placeholder in the allowlist is load-bearing.** Isso refuses to start with an empty allowlist, so the package seeds a local placeholder at install and the Websites action always keeps it appended and hidden from the form. That is what lets the service boot before any real website has been added.
 
-**`store.json` holds one thing: the SMTP _selection_** — disabled, the server's own SMTP, or custom. The config file can only hold concrete credentials, not the fact that they came from the server's settings, so the selection is kept here for the form to pre-fill. The action resolves it into the config file, and while the server's SMTP is selected, an init watcher rewrites those credentials whenever the server's SMTP settings change.
+**`store.json` holds one thing: the SMTP _selection_** — disabled, the server's own SMTP, or custom (a custom server's credentials, password included). The config file can only hold concrete settings, not the fact that they came from the server's settings, so the selection is kept here for the form to pre-fill. The action resolves it into the config file, and while the server's SMTP is selected, an init watcher rewrites those settings whenever the server's SMTP settings change.
+
+**The SMTP password is never in `isso.cfg`.** Its `[smtp] password` is the literal `${ISSO_SMTP_PASSWORD}`, which Isso expands from its environment, since it expands environment variables in every option value. `main` resolves the password at each start, from StartOS's SMTP settings when the server's SMTP is selected and from `store.json` for a custom server, and passes it to the daemon in `ISSO_SMTP_PASSWORD`. It watches both, so a password changed in either restarts the service. `main` always sets the variable, empty when SMTP is disabled, because Isso would send an unset reference as the literal text.
 
 Both are seeded on **every** init, so a field added in a later version picks up its default on upgrade.
 
@@ -136,7 +138,7 @@ Moderation, spam protection, rate limiting, which fields are required, the edit 
 
 Points Isso's notifications at the server's own SMTP or a custom server.
 
-- **What it changes:** the selection in the store, and the resolved credentials in `isso.cfg`.
+- **What it changes:** the selection in the store, and the resolved settings, all but the password, in `isso.cfg`.
 - **Cost:** applies on restart.
 - **Repeat safety:** idempotent.
 - **Without it, notifications go nowhere useful** — Isso's default is to write them to its own log, which is fine for a test and useless for moderation.
@@ -176,9 +178,11 @@ It reports that the server is answering, which is not the same as comments worki
 
 The `main` volume is copied wholesale — `sdk.Backups.ofVolumes('main')`. That is every comment, the configuration, and the store.
 
+**The server's SMTP password is in no backup**: it never reaches the volume, since `main` reads it from StartOS at each start. **A custom SMTP server's password is in every backup**, in `store.json`. That is its only copy, and it is what lets a restored instance send mail without the form being re-entered. If a backup is exposed, the remedy is changing that password at the SMTP provider.
+
 **A plain copy is consistent here** because the database is a single SQLite file and StartOS stops the service before taking a backup — there is no partially-written state to catch.
 
-A restored instance comes back with its comments, its allowlist, and the same admin password. The embed snippet on your website keeps working provided the restored server is reachable at the same address you embedded.
+A restored instance comes back with its comments, its allowlist, its SMTP selection, and the same admin password. The embed snippet on your website keeps working provided the restored server is reachable at the same address you embedded.
 
 ## Limitations and Differences
 
@@ -208,8 +212,10 @@ volumes:
     config: /config
 file_models:
   - isso.cfg # every Isso setting; written by the actions
-  - start9/store.json # the SMTP selection only
-startos_managed_env_vars: []
+  - start9/store.json # the SMTP selection only (a custom server's password included)
+startos_managed_env_vars:
+  - ISSO_SETTINGS # /config/isso.cfg
+  - ISSO_SMTP_PASSWORD # the resolved SMTP password; isso.cfg holds a reference
 dependencies: []
 interfaces: # both on port 8080; one server, split for discoverability
   comments: { type: api, port: 8080 } # the address to embed

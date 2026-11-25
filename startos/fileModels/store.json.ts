@@ -5,7 +5,7 @@ import { sdk } from '../sdk'
 // settings. This store keeps ONE thing the config file can't represent: the SDK
 // SMTP *selection* (disabled / use the server's system SMTP / custom), so the
 // Email Notifications form can prefill it. That action resolves the selection
-// and writes the concrete credentials into isso.cfg [smtp].
+// and writes the concrete settings, all but the password, into isso.cfg [smtp].
 const storeConfigSchema = z.looseObject({
   smtp: smtpShape.catch({ selection: 'disabled', value: {} }),
 })

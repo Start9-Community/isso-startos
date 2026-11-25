@@ -1,12 +1,15 @@
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import { issoCfg } from './fileModels/issoCfg'
+import { storeJson } from './fileModels/store.json'
 import {
   configDir,
   configSubpath,
   dbDir,
   dbSubpath,
   issoCfgPath,
+  resolveIssoSmtp,
+  smtpPasswordEnv,
   uiPort,
 } from './utils'
 
@@ -18,6 +21,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // may edit it directly over SSH).
   const cfg = await issoCfg.read().const(effects)
   if (!cfg) throw new Error('isso.cfg has not been seeded')
+  const selection = await storeJson.read((s) => s.smtp).const(effects)
+  const smtpPassword = selection
+    ? (await resolveIssoSmtp(effects, selection)).password
+    : ''
 
   const sub = sdk.SubContainer.of(
     effects,
@@ -42,7 +49,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     subcontainer: sub,
     exec: {
       command: sdk.useEntrypoint(),
-      env: { ISSO_SETTINGS: issoCfgPath },
+      env: { ISSO_SETTINGS: issoCfgPath, [smtpPasswordEnv]: smtpPassword },
     },
     ready: {
       display: i18n('Isso Server'),

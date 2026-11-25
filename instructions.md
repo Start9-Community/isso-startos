@@ -55,3 +55,5 @@ Open the **Moderation Panel** interface and log in with the password from **Set 
 ## Email notifications (optional)
 
 Run **Configure → Email Notifications** to receive new-comment notifications (with one-click approve/delete links) over SMTP. You can use your server's **system SMTP** (set up once in StartOS settings) or a **custom** SMTP server, plus the recipient address. Keep moderation on whenever notifications are enabled.
+
+A custom SMTP server's password is included in this service's backups, so a restore keeps email working. If a backup is ever exposed, change that password at your email provider. With the system SMTP, the password is not stored by this service and is not in its backups.
